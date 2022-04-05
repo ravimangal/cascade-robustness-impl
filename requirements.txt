@@ -1,0 +1,7 @@
+tensorflow>=2.2
+pandas
+sklearn
+scriptify
+matplotlib
+statsmodels
+tensorflow-probability 
