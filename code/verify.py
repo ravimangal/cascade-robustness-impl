@@ -2,6 +2,7 @@ import os
 import subprocess
 import signal
 import time
+import math
 from threading import Timer
 
 import tensorflow as tf
@@ -86,12 +87,17 @@ def print_marabou_query(x, y, epsilon, path, num_classes, isOver=False):
     for i in range(ord('a'), ord('a') + num_classes - 1):
         names.append(chr(i))
 
+    if isOver:
+        dist = epsilon
+    else:
+        dist = epsilon/math.sqrt(2)
+
     for i in range(0, len(incorrect_labels)):
         fpath = f'{path}{names[i]}.txt'
         with open(fpath, 'w') as f1:
             for j in range(np.shape(x)[0]):
-                x_lb = x[j] - epsilon
-                x_ub = x[j] + epsilon
+                x_lb = x[j] - dist
+                x_ub = x[j] + dist
                 f1.write(f'x{j} >= {x_lb}\n')
                 f1.write(f'x{j} <= {x_ub}\n')
             f1.write(f'+y{incorrect_labels[i]} -y{y} >= 0')

@@ -22,6 +22,7 @@ if __name__ == '__main__':
 
     @scriptify
     def script(experiment='safescad',
+               arch='safescad',
                epochs=30,
                batch_size=128,
                dataset_file=None,
@@ -31,6 +32,7 @@ if __name__ == '__main__':
                gpu=0):
         print("Configuration Options:")
         print("experiment=", experiment)
+        print("arch=", experiment)
         print("epochs=", epochs)
         print("batch_size=", batch_size)
         print("dataset_file=", dataset_file)
@@ -63,11 +65,11 @@ if __name__ == '__main__':
         setup_nnet_tools(nnet_tools_path)
 
         # Load and Preprocess Dataset
-        X_train_enc, y_train_enc, X_test_enc, y_test_enc = get_data(experiment, dataset_file, data_dir, noise=noise)
+        X_train_enc, y_train_enc, X_test_enc, y_test_enc = get_data(experiment, dataset_file, data_dir)
 
         ## Build & Train NN
         n_categories = y_train_enc.shape[1]
-        arch = getattr(architectures, f'arch_{experiment}')
+        arch = getattr(architectures, f'{arch}')
         model = arch((X_train_enc.shape[1],), classes=n_categories)
 
         gloro_model = GloroNet(model=model, epsilon=epsilon, num_iterations=5)
