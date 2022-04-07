@@ -51,8 +51,8 @@ if __name__ == '__main__':
 
         #Basic setup and install additional dependencies
         # Some global variables and general settings
-        model_dir = f'../experiments/models/{experiment}/{conf_name}'
-        data_dir = f'../experiments/data/{experiment}/{conf_name}'
+        model_dir = f'./experiments/models/{experiment}/{conf_name}'
+        data_dir = f'./experiments/data/{experiment}/{conf_name}'
         pd.options.display.float_format = '{:.2f}'.format
         nnet_tools_path = os.path.abspath('NNet')
 
@@ -66,7 +66,8 @@ if __name__ == '__main__':
 
         # Load and Preprocess Dataset
         X_train_enc, y_train_enc, X_test_enc, y_test_enc = get_data(experiment, dataset_file, data_dir)
-
+        print("# of train samples: ", np.shape(X_train_enc)[0])
+        print("# of test samples: ", np.shape(X_test_enc)[0])
         ## Build & Train NN
         n_categories = y_train_enc.shape[1]
         arch = getattr(architectures, f'{arch}')

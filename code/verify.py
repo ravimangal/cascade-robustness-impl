@@ -132,11 +132,11 @@ if __name__ == '__main__':
                marabou_path=None,
                gpu=0):
 
-        data_dir = f'../experiments/data/{experiment}/{conf_name}'
-        model_dir = f'../experiments/models/{experiment}/{conf_name}'
-        query_dir = f'../experiments/marabou-queries/{experiment}/{conf_name}'
-        log_dir = f'../experiments/marabou-queries/{experiment}/{conf_name}/logs'
-        summary_dir = f'../experiments/marabou-queries/{experiment}/{conf_name}/summaries'
+        data_dir = f'./experiments/data/{experiment}/{conf_name}'
+        model_dir = f'./experiments/models/{experiment}/{conf_name}'
+        query_dir = f'./experiments/marabou-queries/{experiment}/{conf_name}'
+        log_dir = f'./experiments/marabou-queries/{experiment}/{conf_name}/logs'
+        summary_dir = f'./experiments/marabou-queries/{experiment}/{conf_name}/summaries'
 
         if not os.path.exists(query_dir):
             os.makedirs(query_dir)
