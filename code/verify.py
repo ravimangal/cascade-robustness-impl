@@ -12,6 +12,9 @@ from data_preprocessing import get_data
 from gloro.models import GloroNet
 from autoattack import utils_tf2
 from autoattack import AutoAttack
+from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
+from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
+
 import torch
 
 def execute_bash_cmd(cmd, log_file, timeout=3600):
@@ -47,6 +50,7 @@ def filter_data(model, X_test, y_test, batch_size, num_classes, isGloro):
         end_indx = (index + 1) * eval_batch_size if (index + 1 < (eval_samples // eval_batch_size)) \
             else eval_samples
         x, y = X_test[strt_indx:end_indx, ], y_test[strt_indx:end_indx, ]
+        y = np.argmax(y, axis=-1)
         y_pred = np.argmax(model.predict(x), axis=-1)
         y_pred_correct_t = (y_pred == y)
         y_pred_incorrect_t = np.logical_not(y_pred_correct_t)
@@ -124,12 +128,12 @@ if __name__ == '__main__':
 
     @scriptify
     def script(experiment='safescad',
-               epochs=30,
                batch_size=128,
                dataset_file=None,
                conf_name='default',
                epsilon=0.5,
                marabou_path=None,
+               attack='cleverhans', # or 'autoattack'
                gpu=0):
 
         data_dir = f'./experiments/data/{experiment}/{conf_name}'
@@ -151,7 +155,7 @@ if __name__ == '__main__':
         num_classes = y_train.shape[1]
 
         # Load model
-        model = tf.keras.load_model(f'{model_dir}/model.h5')
+        model = tf.keras.models.load_model(f'{model_dir}/model.h5')
         gloro_model = GloroNet(model=model, epsilon=epsilon)
 
         # Get test samples where model is not robust
@@ -159,75 +163,91 @@ if __name__ == '__main__':
         x_filtered, y_filtered = filter_data(gloro_model, X_test, y_test, batch_size, num_classes, True)
 
         # Attack test samples where model is not robust via AutoAttack
-        print("Attacking model using AutoAttack ...")
-        model_adapted = utils_tf2.ModelAdapter(model)
-        adversary = AutoAttack(model_adapted, norm='L2', eps=epsilon, version='standard', is_tf_model=True)
-        torch_x_filtered = torch.from_numpy(np.transpose(x_filtered, (0, 3, 1, 2))).float().cuda()
-        torch_y_filtered = torch.from_numpy(y_filtered).float()
-        X_adv = adversary.run_standard_evaluation(x_filtered, y_filtered, bs=batch_size)
-        X_adv = np.moveaxis(X_adv.cpu().numpy(), 1, 3)
+        if attack == 'autoattack':
+            print("Attacking model using AutoAttack ...")
+            model_adapted = utils_tf2.ModelAdapter(model)
+            adversary = AutoAttack(model_adapted, norm='L2', eps=epsilon, version='standard', is_tf_model=True)
+            torch_x_filtered = torch.from_numpy(np.transpose(x_filtered, (0, 3, 1, 2))).float().cuda()
+            torch_y_filtered = torch.from_numpy(y_filtered).float()
+            X_adv = adversary.run_standard_evaluation(torch_x_filtered, torch_y_filtered, bs=batch_size)
+            X_adv = np.moveaxis(X_adv.cpu().numpy(), 1, 3)
 
-        x_filtered2, y_filtered2 = filter_data(model, X_adv, y_test, batch_size, num_classes, False)
+            x_filtered2, y_filtered2 = filter_data(model, X_adv, y_test, batch_size, num_classes, False)
+        elif attack == 'cleverhans':
+            print("Attacking model using Cleverhans ...")
+            X_adv = []
+            for index in range(x_filtered.shape[0]):
+                print(f'Verifying model: Iteration {index} of {x_filtered.shape[0]}')
+                x, y = x_filtered[index, ], y_filtered[index, ]
+                x_adv = projected_gradient_descent(model, x, epsilon, 0.01, 40, 2)
+                X_adv.append(x_adv)
+
+            X_adv = np.concatenate(X_adv)
+            x_filtered2, y_filtered2 = filter_data(model, X_adv, y_test, batch_size, num_classes, False)
 
         # Verify test samples where model is not robust via Marabou
-        print("Certifying model using Marabou ...")
-        x_cex_idxs = []
-        x_pf_indxs = []
-        for index in range(x_filtered2.shape[0]):
-            print(f'Verifying model: Iteration {index} of {x_filtered2.shape[0]}')
-            x, y = x_filtered2[index, ], y_filtered2[index, ]
-            qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_under_', num_classes, isOver=False)
+        if marabou_path is not None:
+            print("Certifying model using Marabou ...")
+            x_cex_idxs = []
+            x_pf_indxs = []
+            for index in range(x_filtered2.shape[0]):
+                print(f'Verifying model: Iteration {index} of {x_filtered2.shape[0]}')
+                x, y = x_filtered2[index, ], y_filtered2[index, ]
+                qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_under_', num_classes, isOver=False)
 
-            marabou_found_cex = False
-            for qname in qnames:
-                # cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                #                            "--property", query_dir + "/query_" + index + "_under_" + qname + ".txt",
-                #                            "--summary-file", summary_dir + "/query_" + index + "_under_" + qname + ".txt",
-                #            "--verbosity", "1", "--snc", "--split-strategy", "polarity",
-                #            "--num-workers", "6", "--initial-divides", "4", "--initial-timeout", "0"]
-
-                cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                           "--property", query_dir + "/query_" + index + "_under_" + qname + ".txt",
-                           "--summary-file", summary_dir + "/query_" + index + "_under_" + qname + ".txt",
-                           "--verbosity", "1"]
-
-                log_file = open(f'{log_dir}/_query_{index}_under_{qname}.log', "w")
-                execute_bash_cmd(cmd_str, log_file)
-                log_file.close()
-
-                num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_under_{qname}.log')
-                if num_cex != 0:
-                    marabou_found_cex = True
-                    x_cex_idxs.append(index)
-                    break
-
-            marabou_found_proof = True
-            if not marabou_found_cex:
-                qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_over_', num_classes, isOver=True)
-
+                marabou_found_cex = False
                 for qname in qnames:
                     # cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                    #                                "--property", query_dir + "/query_" + index + "_over_" + qname + ".txt",
-                    #                                "--summary-file", summary_dir + "/query_" + index + "_over_" + qname + ".txt",
+                    #                            "--property", query_dir + "/query_" + index + "_under_" + qname + ".txt",
+                    #                            "--summary-file", summary_dir + "/query_" + index + "_under_" + qname + ".txt",
                     #            "--verbosity", "1", "--snc", "--split-strategy", "polarity",
                     #            "--num-workers", "6", "--initial-divides", "4", "--initial-timeout", "0"]
 
                     cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                               "--property", query_dir + "/query_" + index + "_over_" + qname + ".txt",
-                               "--summary-file", summary_dir + "/query_" + index + "_over_" + qname + ".txt",
+                               "--property", query_dir + "/query_" + index + "_under_" + qname + ".txt",
+                               "--summary-file", summary_dir + "/query_" + index + "_under_" + qname + ".txt",
                                "--verbosity", "1"]
 
-                    log_file = open(f'{log_dir}/_query_{index}_over_{qname}.log', "w")
+                    log_file = open(f'{log_dir}/_query_{index}_under_{qname}.log', "w")
                     execute_bash_cmd(cmd_str, log_file)
                     log_file.close()
 
-                    num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_over_{qname}.log')
+                    num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_under_{qname}.log')
                     if num_cex != 0:
-                        marabou_found_proof = False
+                        marabou_found_cex = True
+                        print('Found underapproximate counterexample')
+                        x_cex_idxs.append(index)
                         break
-                
-                if marabou_found_proof:
-                    x_pf_indxs.append(index)
 
-        print("Num of samples with counterexamples: ", len(x_cex_idxs))
-        print("Num of samples certified robust: ", len(x_pf_indxs))
+                marabou_found_proof = True
+                if not marabou_found_cex:
+                    qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_over_', num_classes, isOver=True)
+
+                    for qname in qnames:
+                        # cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
+                        #                                "--property", query_dir + "/query_" + index + "_over_" + qname + ".txt",
+                        #                                "--summary-file", summary_dir + "/query_" + index + "_over_" + qname + ".txt",
+                        #            "--verbosity", "1", "--snc", "--split-strategy", "polarity",
+                        #            "--num-workers", "6", "--initial-divides", "4", "--initial-timeout", "0"]
+
+                        cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
+                                   "--property", query_dir + "/query_" + index + "_over_" + qname + ".txt",
+                                   "--summary-file", summary_dir + "/query_" + index + "_over_" + qname + ".txt",
+                                   "--verbosity", "1"]
+
+                        log_file = open(f'{log_dir}/_query_{index}_over_{qname}.log', "w")
+                        execute_bash_cmd(cmd_str, log_file)
+                        log_file.close()
+
+                        num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_over_{qname}.log')
+                        if num_cex != 0:
+                            print('Found overapproximate counterexample')
+                            marabou_found_proof = False
+                            break
+
+                    if marabou_found_proof:
+                        print('Found proof')
+                        x_pf_indxs.append(index)
+
+            print("Num of samples with counterexamples: ", len(x_cex_idxs))
+            print("Num of samples certified robust: ", len(x_pf_indxs))
