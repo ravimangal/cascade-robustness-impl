@@ -213,11 +213,11 @@ if __name__ == '__main__':
                                "--summary-file", summary_dir + "/query_" + str(index) + "_under_" + qname + ".txt",
                                "--verbosity", "1"]
 
-                    log_file = open(f'{log_dir}/_query_{index}_under_{qname}.log', "w")
+                    log_file = open(f'{log_dir}/query_{index}_under_{qname}.log', "w")
                     execute_bash_cmd(cmd_str, log_file)
                     log_file.close()
 
-                    num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_under_{qname}.log')
+                    num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_under_{qname}.log')
                     if num_cex != 0:
                         marabou_found_cex = True
                         print('Found underapproximate counterexample')
@@ -240,11 +240,11 @@ if __name__ == '__main__':
                                    "--summary-file", summary_dir + "/query_" + str(index) + "_over_" + qname + ".txt",
                                    "--verbosity", "1"]
 
-                        log_file = open(f'{log_dir}/_query_{index}_over_{qname}.log', "w")
+                        log_file = open(f'{log_dir}/query_{index}_over_{qname}.log', "w")
                         execute_bash_cmd(cmd_str, log_file)
                         log_file.close()
 
-                        num_cex = analyze_marabou_log(f'{log_dir}/_query_{index}_over_{qname}.log')
+                        num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_over_{qname}.log')
                         if num_cex != 0:
                             print('Found overapproximate counterexample')
                             marabou_found_proof = False
