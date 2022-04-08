@@ -209,8 +209,8 @@ if __name__ == '__main__':
                     #            "--num-workers", "6", "--initial-divides", "4", "--initial-timeout", "0"]
 
                     cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                               "--property", query_dir + "/query_" + index + "_under_" + qname + ".txt",
-                               "--summary-file", summary_dir + "/query_" + index + "_under_" + qname + ".txt",
+                               "--property", query_dir + "/query_" + str(index) + "_under_" + qname + ".txt",
+                               "--summary-file", summary_dir + "/query_" + str(index) + "_under_" + qname + ".txt",
                                "--verbosity", "1"]
 
                     log_file = open(f'{log_dir}/_query_{index}_under_{qname}.log', "w")
@@ -236,8 +236,8 @@ if __name__ == '__main__':
                         #            "--num-workers", "6", "--initial-divides", "4", "--initial-timeout", "0"]
 
                         cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
-                                   "--property", query_dir + "/query_" + index + "_over_" + qname + ".txt",
-                                   "--summary-file", summary_dir + "/query_" + index + "_over_" + qname + ".txt",
+                                   "--property", query_dir + "/query_" + str(index) + "_over_" + qname + ".txt",
+                                   "--summary-file", summary_dir + "/query_" + str(index) + "_over_" + qname + ".txt",
                                    "--verbosity", "1"]
 
                         log_file = open(f'{log_dir}/_query_{index}_over_{qname}.log', "w")
