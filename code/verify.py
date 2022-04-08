@@ -176,9 +176,14 @@ if __name__ == '__main__':
         elif attack == 'cleverhans':
             print("Attacking model using Cleverhans ...")
             X_adv = []
-            for index in range(x_filtered.shape[0]):
-                print(f'Verifying model: Iteration {index} of {x_filtered.shape[0]}')
-                x, y = x_filtered[index, ], y_filtered[index, ]
+            eval_samples = x_filtered.shape[0]
+            eval_batch_size = batch_size
+            for index in range(eval_samples // eval_batch_size):
+                print(f'Evaluating model: Iteration {index} of {eval_samples // eval_batch_size}')
+                strt_indx = index * eval_batch_size
+                end_indx = (index + 1) * eval_batch_size if (index + 1 < (eval_samples // eval_batch_size)) \
+                    else eval_samples
+                x, y = x_filtered[strt_indx:end_indx, ], y_filtered[strt_indx:end_indx, ]
                 x_adv = projected_gradient_descent(model, x, epsilon, 0.01, 40, 2)
                 X_adv.append(x_adv)
 
