@@ -118,7 +118,8 @@ def analyze_marabou_log(logpath):
                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     p1.stdout.close()  # Allow proc1 to receive a SIGPIPE if proc2 exits.
     out, err = p2.communicate()
-    if out_term.startswith('unsat'):
+    if not out_term.startswith('unsat'):
+        print("sat found")
         num_viol = int(out.decode("utf-8"))
         return num_viol
     return 0
