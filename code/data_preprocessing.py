@@ -118,7 +118,7 @@ def get_safescad_data(dataset_file, data_dir, noise, splits):
         # add the class to the dataframe
         df['TOT'] = pd.cut(df.ReactionTime, bins=tot_bins, labels=tot_labels).astype(object)
 
-        # keep just 10% of the data
+        # keep just 20% of the data
         df = df.sample(frac=0.2)
 
         # split features and targets
@@ -137,7 +137,7 @@ def get_safescad_data(dataset_file, data_dir, noise, splits):
         onehot = prepare_target(y, categories=[tot_labels])
 
         # split train and test data
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.10, stratify=y,
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.01, stratify=y,
                                                             random_state=random_state)
 
         # upsample the training data
