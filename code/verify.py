@@ -146,9 +146,19 @@ if __name__ == '__main__':
                conf_name='default',
                epsilon=0.5,
                marabou_path=None,
-               use_marabou_api=True,
+               use_marabou_api=False,
                attack='cleverhans', # or 'autoattack'
                gpu=0):
+
+        print("Configuration Options:")
+        print("experiment=", experiment)
+        print("batch_size=", batch_size)
+        print("dataset_file=", dataset_file)
+        print("conf_name=", conf_name)
+        print("epsilon=", epsilon)
+        print("marabou_path=", marabou_path)
+        print("use_marabou_api=", use_marabou_api)
+        print("attack=", attack)
 
         data_dir = f'./experiments/data/{experiment}/{conf_name}'
         model_dir = f'./experiments/models/{experiment}/{conf_name}'

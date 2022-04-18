@@ -32,7 +32,7 @@ if __name__ == '__main__':
                gpu=0):
         print("Configuration Options:")
         print("experiment=", experiment)
-        print("arch=", experiment)
+        print("arch=", arch)
         print("epochs=", epochs)
         print("batch_size=", batch_size)
         print("dataset_file=", dataset_file)
