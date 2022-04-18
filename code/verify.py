@@ -15,6 +15,8 @@ from autoattack import utils_tf2
 from autoattack import AutoAttack
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
+
+#sys.path.append(os.path.abspath("/home/ravi/Marabou-orig/"))
 from marabou_net import MarabouNet, AllowedMisclassifications, Counterexample
 from scipy.spatial import distance
 
@@ -87,7 +89,7 @@ def filter_data(model, X_test, y_test, batch_size, num_classes, isGloro):
 
     return x_filtered, y_filtered
 
-def print_marabou_query(x, y, epsilon, path, num_classes, isOver=False):
+def print_marabou_query(x, y, epsilon, path, num_classes, num_features, isOver=False):
     labels = list(range(num_classes))
     incorrect_labels = list(filter(lambda l: l != y, labels))
     names = []
@@ -97,7 +99,7 @@ def print_marabou_query(x, y, epsilon, path, num_classes, isOver=False):
     if isOver:
         dist = epsilon
     else:
-        dist = epsilon/math.sqrt(2)
+        dist = epsilon/math.sqrt(num_features)
 
     for i in range(0, len(incorrect_labels)):
         fpath = f'{path}{names[i]}.txt'
@@ -132,15 +134,15 @@ def analyze_marabou_log_for_soln(logpath, num_features):
     for i in range(num_features):
         out_term = subprocess.check_output(["grep", f'x{i} = ', logpath])
         out_term = out_term.decode("utf-8")
-        soln.append(float(out_term))
+        soln.append(float(out_term.split(" = ")[1]))
     soln = np.array(soln, dtype=np.float32)
     return soln
 
-def execute_marabou_query(x, y, epsilon, nnet, isOver=False):
+def execute_marabou_query(x, y, epsilon, nnet, num_features, isOver=False):
     if isOver:
         dist = epsilon
     else:
-        dist = epsilon/math.sqrt(2)
+        dist = epsilon/math.sqrt(num_features)
     lbs = x - dist
     ubs = x + dist
     return nnet.find_counterexample(lbs, ubs, y)
@@ -234,7 +236,7 @@ if __name__ == '__main__':
             for index in range(x_filtered2.shape[0]):
                 print(f'Verifying model: Iteration {index} of {x_filtered2.shape[0]}')
                 x, y = x_filtered2[index, ], y_filtered2[index, ]
-                qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_under_', num_classes, isOver=False)
+                qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_under_', num_classes, num_features, isOver=False)
 
                 marabou_found_cex = False
                 for qname in qnames:
@@ -268,7 +270,7 @@ if __name__ == '__main__':
 
                 marabou_found_proof = True
                 if not marabou_found_cex:
-                    qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_over_', num_classes, isOver=True)
+                    qnames = print_marabou_query(x, y, epsilon, f'{query_dir}/query_{index}_over_', num_classes, num_features, isOver=True)
 
                     for qname in qnames:
                         # cmd_str = [marabou_path, "--input", model_dir + "/model.nnet",
@@ -320,7 +322,7 @@ if __name__ == '__main__':
                 print(f'Verifying model: Iteration {index} of {x_filtered2.shape[0]}')
                 x, y = x_filtered2[index,], y_filtered2[index,]
 
-                m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, isOver=False)
+                m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, num_features, isOver=False)
                 marabou_found_cex = False
                 if cex is not None:
                     y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
@@ -334,7 +336,7 @@ if __name__ == '__main__':
 
                 marabou_found_proof = True
                 if not marabou_found_cex:
-                    m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, isOver=True)
+                    m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, num_features, isOver=True)
                     if cex is not None:
                         marabou_found_proof = False
                         y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
