@@ -3,6 +3,7 @@ import subprocess
 import signal
 import time
 import math
+import sys
 from threading import Timer
 
 import tensorflow as tf
@@ -14,6 +15,8 @@ from autoattack import utils_tf2
 from autoattack import AutoAttack
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
+from marabou_net import MarabouNet, AllowedMisclassifications, Counterexample
+from scipy.spatial import distance
 
 import torch
 
@@ -124,6 +127,15 @@ def analyze_marabou_log(logpath):
         return num_viol
     return 0
 
+def execute_marabou_query(x, y, epsilon, nnet, isOver=False):
+    if isOver:
+        dist = epsilon
+    else:
+        dist = epsilon/math.sqrt(2)
+    lbs = x - dist
+    ubs = x + dist
+    return nnet.find_counterexample(lbs, ubs, y)
+
 
 if __name__ == '__main__':
 
@@ -134,6 +146,7 @@ if __name__ == '__main__':
                conf_name='default',
                epsilon=0.5,
                marabou_path=None,
+               use_marabou_api=True,
                attack='cleverhans', # or 'autoattack'
                gpu=0):
 
@@ -192,7 +205,7 @@ if __name__ == '__main__':
             x_filtered2, y_filtered2 = filter_data(model, X_adv, y_test, batch_size, num_classes, False)
 
         # Verify test samples where model is not robust via Marabou
-        if marabou_path is not None:
+        if marabou_path is not None and not use_marabou_api:
             print("Certifying model using Marabou ...")
             x_cex_idxs = []
             x_pf_indxs = []
@@ -252,6 +265,46 @@ if __name__ == '__main__':
                             break
 
                     if marabou_found_proof:
+                        print('Found proof')
+                        x_pf_indxs.append(index)
+            print("Num of samples with counterexamples: ", len(x_cex_idxs))
+            print("Num of samples certified robust: ", len(x_pf_indxs))
+
+        elif marabou_path is not None and use_marabou_api:
+            sys.path.append(os.path.abspath(marabou_path))
+            print("Certifying model using Marabou ...")
+            marabou_net = MarabouNet(f'{model_dir}/model.nnet', network_options=dict(), marabou_options=dict(),
+                                     marabou_verbosity=1)
+            x_cex_idxs = []
+            x_pf_indxs = []
+            for index in range(x_filtered2.shape[0]):
+                print(f'Verifying model: Iteration {index} of {x_filtered2.shape[0]}')
+                x, y = x_filtered2[index,], y_filtered2[index,]
+
+                m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, isOver=False)
+                marabou_found_cex = False
+                if cex is not None:
+                    y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
+                    dist_cex = distance.euclidean(x, cex)
+                    if y_pred != y and dist_cex <= epsilon:
+                        print('Found valid underapproximate counterexample')
+                        marabou_found_cex = True
+                        x_cex_idxs.append(index)
+                    else:
+                        print('Found invalid underapproximate counterexample')
+
+                marabou_found_proof = True
+                if not marabou_found_cex:
+                    m_pred, cex = execute_marabou_query(x, y, epsilon, marabou_net, isOver=True)
+                    if cex is not None:
+                        marabou_found_proof = False
+                        y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
+                        dist_cex = distance.euclidean(x, cex)
+                        if y_pred != y and dist_cex <= epsilon:
+                            print('Found valid overapproximate counterexample')
+                        else:
+                            print('Found invalid overapproximate counterexample')
+                    else:
                         print('Found proof')
                         x_pf_indxs.append(index)
 
