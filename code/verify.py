@@ -253,6 +253,7 @@ if __name__ == '__main__':
 
                     log_file = open(f'{log_dir}/query_{index}_under_{qname}.log', "w")
                     execute_bash_cmd(cmd_str, log_file)
+                    log_file.flush()
                     log_file.close()
 
                     num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_under_{qname}.log')
@@ -266,6 +267,7 @@ if __name__ == '__main__':
                             x_cex_idxs.append(index)
                             break
                         else:
+                            print(f'y_pred={y_pred}, y={y}, dist_cex={dist_cex}')
                             print('Found invalid underapproximate counterexample')
 
                 marabou_found_proof = True
@@ -286,6 +288,7 @@ if __name__ == '__main__':
 
                         log_file = open(f'{log_dir}/query_{index}_over_{qname}.log', "w")
                         execute_bash_cmd(cmd_str, log_file)
+                        log_file.flush()
                         log_file.close()
 
                         num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_over_{qname}.log')
@@ -297,6 +300,7 @@ if __name__ == '__main__':
                             if y_pred != y and dist_cex <= epsilon:
                                 print('Found valid overapproximate counterexample')
                             else:
+                                print(f'y_pred={y_pred}, y={y}, dist_cex={dist_cex}')
                                 print('Found invalid overapproximate counterexample')
                             marabou_found_proof = False
                             break
