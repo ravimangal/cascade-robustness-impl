@@ -48,7 +48,7 @@ def filter_data(model, X_test, y_test, batch_size, num_classes, isGloro):
     eval_samples = X_test.shape[0]
     eval_batch_size = batch_size
     for index in range(eval_samples // eval_batch_size):
-        print(f'Evaluating model: Iteration {index} of {eval_samples // eval_batch_size}')
+        # print(f'Evaluating model: Iteration {index} of {eval_samples // eval_batch_size}')
         strt_indx = index * eval_batch_size
         end_indx = (index + 1) * eval_batch_size if (index + 1 < (eval_samples // eval_batch_size)) \
             else eval_samples
@@ -127,6 +127,15 @@ def analyze_marabou_log(logpath):
         return num_viol
     return 0
 
+def analyze_marabou_log_for_soln(logpath, num_features):
+    soln = []
+    for i in range(num_features):
+        out_term = subprocess.check_output(["grep", f'x{i} = ', logpath])
+        out_term = out_term.decode("utf-8")
+        soln.append(float(out_term))
+    soln = np.array(soln, dtype=np.float32)
+    return soln
+
 def execute_marabou_query(x, y, epsilon, nnet, isOver=False):
     if isOver:
         dist = epsilon
@@ -177,6 +186,7 @@ if __name__ == '__main__':
         X_train, y_train, X_test, y_test = get_data(experiment, dataset_file, data_dir)
         num_features = X_train.shape[1]
         num_classes = y_train.shape[1]
+        num_samples = y_test.shape[0]
 
         # Load model
         model = tf.keras.models.load_model(f'{model_dir}/model.h5')
@@ -185,6 +195,7 @@ if __name__ == '__main__':
         # Get test samples where model is not robust
         print("Certifying model using Gloro Lipschitzness check ...")
         x_filtered, y_filtered = filter_data(gloro_model, X_test, y_test, batch_size, num_classes, True)
+        num_samples_postGloro = y_filtered.shape[0]
 
         # Attack test samples where model is not robust via AutoAttack
         if attack == 'autoattack':
@@ -203,7 +214,7 @@ if __name__ == '__main__':
             eval_samples = x_filtered.shape[0]
             eval_batch_size = batch_size
             for index in range(eval_samples // eval_batch_size):
-                print(f'Evaluating model: Iteration {index} of {eval_samples // eval_batch_size}')
+                #print(f'Evaluating model: Iteration {index} of {eval_samples // eval_batch_size}')
                 strt_indx = index * eval_batch_size
                 end_indx = (index + 1) * eval_batch_size if (index + 1 < (eval_samples // eval_batch_size)) \
                     else eval_samples
@@ -213,6 +224,7 @@ if __name__ == '__main__':
 
             X_adv = np.concatenate(X_adv)
             x_filtered2, y_filtered2 = filter_data(model, X_adv, y_test, batch_size, num_classes, False)
+            num_samples_postattack = y_filtered2.shape[0]
 
         # Verify test samples where model is not robust via Marabou
         if marabou_path is not None and not use_marabou_api:
@@ -243,10 +255,16 @@ if __name__ == '__main__':
 
                     num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_under_{qname}.log')
                     if num_cex != 0:
-                        marabou_found_cex = True
-                        print('Found underapproximate counterexample')
-                        x_cex_idxs.append(index)
-                        break
+                        cex = analyze_marabou_log_for_soln(f'{log_dir}/query_{index}_under_{qname}.log', num_features)
+                        y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
+                        dist_cex = distance.euclidean(x, cex)
+                        if y_pred != y and dist_cex <= epsilon:
+                            print('Found valid underapproximate counterexample')
+                            marabou_found_cex = True
+                            x_cex_idxs.append(index)
+                            break
+                        else:
+                            print('Found invalid underapproximate counterexample')
 
                 marabou_found_proof = True
                 if not marabou_found_cex:
@@ -270,15 +288,26 @@ if __name__ == '__main__':
 
                         num_cex = analyze_marabou_log(f'{log_dir}/query_{index}_over_{qname}.log')
                         if num_cex != 0:
-                            print('Found overapproximate counterexample')
+                            cex = analyze_marabou_log_for_soln(f'{log_dir}/query_{index}_over_{qname}.log',
+                                                               num_features)
+                            y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
+                            dist_cex = distance.euclidean(x, cex)
+                            if y_pred != y and dist_cex <= epsilon:
+                                print('Found valid overapproximate counterexample')
+                            else:
+                                print('Found invalid overapproximate counterexample')
                             marabou_found_proof = False
                             break
 
                     if marabou_found_proof:
                         print('Found proof')
                         x_pf_indxs.append(index)
-            print("Num of samples with counterexamples: ", len(x_cex_idxs))
-            print("Num of samples certified robust: ", len(x_pf_indxs))
+            print("Num of samples total: ", num_samples)
+            print("Num of samples certified bot by Gloro: ", num_samples_postGloro)
+            print("Num of samples not successfully attacked: ", num_samples_postattack)
+            print("Num of samples with Marabou counterexamples: ", len(x_cex_idxs))
+            print("Num of samples certified robust by Marabou: ", len(x_pf_indxs))
+            print("Num of samples unresolved samples: ", num_samples_postattack - len(x_cex_idxs) - len(x_pf_indxs))
 
         elif marabou_path is not None and use_marabou_api:
             sys.path.append(os.path.abspath(marabou_path))
@@ -318,5 +347,9 @@ if __name__ == '__main__':
                         print('Found proof')
                         x_pf_indxs.append(index)
 
-            print("Num of samples with counterexamples: ", len(x_cex_idxs))
-            print("Num of samples certified robust: ", len(x_pf_indxs))
+            print("Num of samples total: ", num_samples)
+            print("Num of samples certified bot by Gloro: ", num_samples_postGloro)
+            print("Num of samples not successfully attacked: ", num_samples_postattack)
+            print("Num of samples with Marabou counterexamples: ", len(x_cex_idxs))
+            print("Num of samples certified robust by Marabou: ", len(x_pf_indxs))
+            print("Num of samples unresolved samples: ", num_samples_postattack - len(x_cex_idxs) - len(x_pf_indxs))
