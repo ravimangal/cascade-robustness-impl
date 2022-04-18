@@ -38,6 +38,11 @@ def execute_bash_cmd(cmd, log_file, timeout=3600):
     while True:
         output = p.stdout.readline()
         if p.poll() is not None:
+            if output:
+                log_file.write(output.decode("utf-8"))
+            outputs = p.stdout.readlines()
+            for output in outputs:
+                log_file.write(output.decode("utf-8"))
             break
         if output:
             log_file.write(output.decode("utf-8"))
@@ -261,7 +266,7 @@ if __name__ == '__main__':
                         cex = analyze_marabou_log_for_soln(f'{log_dir}/query_{index}_under_{qname}.log', num_features)
                         y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
                         dist_cex = distance.euclidean(x, cex)
-                        if y_pred != y and dist_cex <= epsilon:
+                        if y_pred != y and dist_cex <= (epsilon + 0.000001):
                             print('Found valid underapproximate counterexample')
                             marabou_found_cex = True
                             x_cex_idxs.append(index)
@@ -297,7 +302,7 @@ if __name__ == '__main__':
                                                                num_features)
                             y_pred = np.argmax(model.predict(np.expand_dims(cex, axis=0)))
                             dist_cex = distance.euclidean(x, cex)
-                            if y_pred != y and dist_cex <= epsilon:
+                            if y_pred != y and dist_cex <= (epsilon + 0.000001):
                                 print('Found valid overapproximate counterexample')
                             else:
                                 print(f'y_pred={y_pred}, y={y}, dist_cex={dist_cex}')
