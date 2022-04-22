@@ -384,7 +384,7 @@ def cutout_augmentation(x, mask_size=8):
     return (1. - mask) * x + mask * 0.5
 
 
-def get_data(dataset, batch_size, augmentation=None, mixup=False):
+def get_image_data(dataset, batch_size, augmentation=None, mixup=False):
     # Get the augmentation.
     if augmentation is None or augmentation.lower() == 'none':
         augmentation = data_augmentation(
@@ -486,12 +486,12 @@ def get_data(dataset, batch_size, augmentation=None, mixup=False):
 
 def get_mnist_data(dataset_file, data_dir, noise, splits):
     print('Getting MNIST dataset...')
-    return get_data('mnist', 128)
+    return get_image_data('mnist', 128)
 ##############################################################
 
 def get_cifar_data(dataset_file, data_dir, noise, splits):
     print('Getting CIFAR dataset...')
-    return get_data('cifar', 128)
+    return get_image_data('cifar', 128)
 
 ##############################################################
 
