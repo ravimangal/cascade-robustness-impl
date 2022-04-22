@@ -437,11 +437,15 @@ def get_image_data(dataset, batch_size, augmentation=None, mixup=False):
         shuffle_files=True,
         as_supervised=True)
 
+    input_shape = metadata.features['image'].shape
+    input_shape_flat = input_shape[0]*input_shape[1]*input_shape[2]
+
     train = (train
              .map(
         lambda x, y: (tf.cast(x, 'float32') / 255., y),
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
         deterministic=False)
+             .map(lambda x, y: (tf.reshape(x,[input_shape_flat]), y))
              .cache()
              .batch(batch_size)
              .map(
@@ -455,6 +459,7 @@ def get_image_data(dataset, batch_size, augmentation=None, mixup=False):
         lambda x, y: (tf.cast(x, 'float32') / 255., y),
         num_parallel_calls=tf.data.experimental.AUTOTUNE,
         deterministic=False)
+            .map(lambda x, y: (tf.reshape(x, [input_shape_flat]), y))
             .cache()
             .batch(batch_size)
             .prefetch(tf.data.experimental.AUTOTUNE))
