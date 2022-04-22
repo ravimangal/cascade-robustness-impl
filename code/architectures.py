@@ -268,3 +268,41 @@ def minmax_cnn_6C2F(
         pooling=pooling,
         activation='minmax',
         initialization=initialization)
+
+def dense_small_3F(
+        input_shape,
+        num_classes,
+        pooling='conv',
+        activation='relu',
+        initialization='orthogonal'):
+    initializer = _get_initializer(initialization)
+
+    x = Input(input_shape)
+    z = Dense(64, kernel_initializer=initializer)(x)
+    z = _add_activation(z, activation)
+    z = Dense(32, kernel_initializer=initializer)(z)
+    z = _add_activation(z, activation)
+    z = Dense(16, kernel_initializer=initializer)(z)
+    z = _add_activation(z, activation)
+    y = Dense(num_classes, kernel_initializer=initializer)(z)
+
+    return x, y
+
+def dense_med_3F(
+        input_shape,
+        num_classes,
+        pooling='conv',
+        activation='relu',
+        initialization='orthogonal'):
+    initializer = _get_initializer(initialization)
+
+    x = Input(input_shape)
+    z = Dense(128, kernel_initializer=initializer)(x)
+    z = _add_activation(z, activation)
+    z = Dense(64, kernel_initializer=initializer)(z)
+    z = _add_activation(z, activation)
+    z = Dense(32, kernel_initializer=initializer)(z)
+    z = _add_activation(z, activation)
+    y = Dense(num_classes, kernel_initializer=initializer)(z)
+
+    return x, y
