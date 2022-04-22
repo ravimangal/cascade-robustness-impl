@@ -271,7 +271,7 @@ def minmax_cnn_6C2F(
 
 def dense_small_3F(
         input_shape,
-        num_classes,
+        classes=10,
         pooling='conv',
         activation='relu',
         initialization='orthogonal'):
@@ -284,13 +284,13 @@ def dense_small_3F(
     z = _add_activation(z, activation)
     z = Dense(16, kernel_initializer=initializer)(z)
     z = _add_activation(z, activation)
-    y = Dense(num_classes, kernel_initializer=initializer)(z)
+    y = Dense(classes, kernel_initializer=initializer)(z)
 
     return x, y
 
 def dense_med_3F(
         input_shape,
-        num_classes,
+        classes=10,
         pooling='conv',
         activation='relu',
         initialization='orthogonal'):
@@ -303,6 +303,6 @@ def dense_med_3F(
     z = _add_activation(z, activation)
     z = Dense(32, kernel_initializer=initializer)(z)
     z = _add_activation(z, activation)
-    y = Dense(num_classes, kernel_initializer=initializer)(z)
+    y = Dense(classes, kernel_initializer=initializer)(z)
 
     return x, y
