@@ -286,7 +286,8 @@ def dense_small_3F(
     z = _add_activation(z, activation)
     y = Dense(classes, kernel_initializer=initializer)(z)
 
-    return x, y
+    model = tf.keras.models.Model(x, y)
+    return model
 
 def dense_med_3F(
         input_shape,
@@ -305,4 +306,5 @@ def dense_med_3F(
     z = _add_activation(z, activation)
     y = Dense(classes, kernel_initializer=initializer)(z)
 
-    return x, y
+    model = tf.keras.models.Model(x, y)
+    return model
