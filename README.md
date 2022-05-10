@@ -25,7 +25,7 @@ python -u ./code/verify.py --experiment=safescad --conf_name=base_bin  --epsilon
 ```
 
 # Experimental Data
-All data generated for the experiments in the experimental_data.zip file in the Experiments folder. This includes the train and test datasets, trained models, queries issued to Marabou, and the output logs. The output logs contain the final statistics that are reported in the paper. 
+All data generated for the experiments in the experimental_data.zip file in the Experiments folder. This includes the train and test datasets, trained models, queries issued to Marabou, and the output logs. The output logs verify_mnist_small_bin.out and verify_safescad_base_bin.out contain the final statistics that are reported in the paper. 
 
 # Dependencies
 - Gloro code from https://github.com/klasleino/gloro (commit 5ebfe0f3850bca20e4ee4414fa2ee8a4af303023)

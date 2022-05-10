@@ -16,8 +16,6 @@ from autoattack import AutoAttack
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
 
-#sys.path.append(os.path.abspath("/home/ravi/Marabou-orig/"))
-from marabou_net import MarabouNet, AllowedMisclassifications, Counterexample
 from scipy.spatial import distance
 
 import torch
@@ -175,6 +173,9 @@ if __name__ == '__main__':
         print("marabou_path=", marabou_path)
         print("use_marabou_api=", use_marabou_api)
         print("attack=", attack)
+
+        sys.path.append(os.path.abspath(marabou_path))
+        from marabou_net import MarabouNet, AllowedMisclassifications, Counterexample
 
         data_dir = f'./experiments/data/{experiment}/{conf_name}'
         model_dir = f'./experiments/models/{experiment}/{conf_name}'

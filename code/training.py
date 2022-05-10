@@ -80,12 +80,15 @@ if __name__ == '__main__':
             optimizer=tf.keras.optimizers.Adam(learning_rate=lr),
             metrics=[clean_acc, vra, rejection_rate])
 
+        decay_to = 'decay_to_0.0001'
+        if experiment == 'mnist':
+            decay_to = 'decay_to_0.000001'
         history = gloro_model.fit(X_train_enc, y_train_enc,
                                   validation_data=(X_test_enc, y_test_enc),
                                   epochs=epochs,
                                   batch_size=batch_size,
                                   callbacks=[EpsilonScheduler('fixed'),
-                                             LrScheduler('decay_to_0.0001'),])
+                                             LrScheduler(decay_to),])
 
         # evaluate the model
         print('Evaluating model ...')
